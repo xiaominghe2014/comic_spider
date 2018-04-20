@@ -17,5 +17,6 @@
     python3 src/spider_ui.py
 ```
 ![testpng](demo.png)
+![testpng](demo1.png)
 ## ToDo
     多进程更新Qt界面

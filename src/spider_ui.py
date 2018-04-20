@@ -15,6 +15,7 @@
 import os
 import sys
 import time
+import threading
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import *
@@ -48,7 +49,7 @@ class SpiderUi(QWidget):
 
     def init_ui(self):
         self.setGeometry(400, 300, 500, 500)
-        self.setWindowTitle('下载器')
+        self.setWindowTitle('腾讯动漫下载器')
         self.ui_layout()
         self.ui_url()
         self.ui_down()
@@ -138,7 +139,8 @@ class SpiderUi(QWidget):
         if os.path.isdir(path):
             spider.set_save(path)
         spider.ui_call(self.set_book_msg)
-        spider.down_comic(self.url_line.text(), self.emit_log)
+        t = threading.Thread(target=spider.down_comic, args=(self.url_line.text(), self.emit_log))
+        t.start()
 
     def set_book_msg(self, name, des):
         self.down_title.setText(name)

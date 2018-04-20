@@ -18,6 +18,7 @@ import json
 import requests
 import base64
 import multiprocessing
+import threading
 
 search_url = 'http://ac.qq.com/Comic/search/word/{}'
 book_url = 'http://ac.qq.com/Comic/comicInfo/id/{}'
@@ -68,9 +69,12 @@ class SpiderComic(object):
             # pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
             for i in range(self.book_len):
                 log_call('开始下载第{}章'.format(i + 1))
-                process = multiprocessing.Process(target=down_img,
-                                                  args=(self.save_path, i + 1, self.book_id, print))
-                process.start()
+                # process = multiprocessing.Process(target=down_img,
+                #                                   args=(self.save_path, i + 1, self.book_id, log_call))
+                # process.start()
+                t = threading.Thread(target=down_img,
+                                     args=(self.save_path, i + 1, self.book_id, log_call))
+                t.start()
         else:
             log_call('没找到{}相应漫画信息'.format(book_name))
 
