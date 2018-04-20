@@ -30,10 +30,11 @@ class SpiderUi(QWidget):
         super().__init__()
         self.layout_main = QGridLayout()
         self.url_line = QLineEdit()
-        self.url_btn = QPushButton("分析")
+        self.url_btn = QPushButton("搜索")
         self.down_line = QLineEdit()
         self.down_btn = QPushButton("浏览")
         self.down_title = QLabel('暂无')
+        self.down_title.setWordWrap(True)
         self.down_des = QLabel('暂无')
         self.down_des.setWordWrap(True)
         self.detail_list = QTextEdit()
@@ -80,7 +81,7 @@ class SpiderUi(QWidget):
     def ui_des(self):
         title = QLabel('名称：')
         des = QLabel('简介: ')
-        self.layout_main.addWidget(title, 2, 0)
+        self.layout_main.addWidget(title, 2, 0, 1, 2)
         self.layout_main.addWidget(self.down_title, 2, 1, 1, 2)
         self.layout_main.addWidget(des, 3, 0)
         self.layout_main.addWidget(self.down_des, 3, 1, 1, 2)
@@ -97,17 +98,33 @@ class SpiderUi(QWidget):
     def url_handler(self):
         url = self.url_line.text()
         items = SpiderComic.get_list_by_book_name(url)
+        res_name = ''
+        res_des = '请选取一个具体搜索结果输入漫画名称进行下载'
+        res_count = 0
         if 1 < len(items):
-            book_id = SpiderComic.get_list_by_book_name(url)[0][0]
-            info = SpiderComic.get_list_video(book_id)
-            book_name = info['title'].strip()
-            book_des = info['brief_intrd']
-            self.set_book_msg(book_name, book_des)
+            for item in items:
+                if 2 == len(item):
+                    book_id = item[0]
+                    book_name = item[1]
+                    if book_name == url:
+                        info = SpiderComic.get_list_video(book_id)
+                        if 'brief_intrd' in info:
+                            book_des = info['brief_intrd']
+                            res_des = book_des
+                        res_name = url
+                        res_count = 1
+                        break
+                    else:
+                        res_count += 1
+                        res_name = '{}、{}'.format(res_name, book_name)
+            if 1 != res_count:
+                res_name = '\'{}\'共有{}个搜索结果:\n{}'.format(url, res_count, res_name)
+            self.set_book_msg(res_name, res_des)
         else:
             if not url:
                 self.next_detail('请先输入漫画名称')
             else:
-                self.next_detail('未找到相应漫画信息')
+                self.next_detail('未找到"{}"相应漫画信息'.format(url))
 
     def local_path(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
