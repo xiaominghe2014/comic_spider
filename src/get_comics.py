@@ -43,18 +43,36 @@ class SpiderComic(object):
         self.book_id = ''
         self.book_des = ''
         self.book_len = 0
+        self.save_path = '{}/../download'.format(current_dir)
+        self.des_call = None
+        self.log_call = None
+        self.prc_queue = multiprocessing.Queue()
 
-    def down_comic(self, book_name):
-        self.book_id = SpiderComic.get_list_by_book_name(book_name)[0][0]
-        info = SpiderComic.get_list_video(self.book_id)
-        self.book_name = info['title'].strip()
-        self.book_des = info['brief_intrd']
-        chapter = SpiderComic.get_chapter(self.book_id)
-        self.book_len = chapter['length']
-        for i in range(self.book_len):
-            print('开始下载第{}章'.format(i+1))
-            process = multiprocessing.Process(target=SpiderComic.down_img, args=(i+1, self.book_id))
-            process.start()
+    def ui_call(self, des_call):
+        self.des_call = des_call
+
+    def set_save(self, path):
+        self.save_path = path
+
+    def down_comic(self, book_name, log_call=print):
+        items = SpiderComic.get_list_by_book_name(book_name)
+        if 1 < len(items):
+            self.book_id = SpiderComic.get_list_by_book_name(book_name)[0][0]
+            info = SpiderComic.get_list_video(self.book_id)
+            self.book_name = info['title'].strip()
+            self.book_des = info['brief_intrd']
+            if self.des_call:
+                self.des_call(self.book_name, self.book_des)
+            chapter = SpiderComic.get_chapter(self.book_id)
+            self.book_len = chapter['length']
+            # pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+            for i in range(self.book_len):
+                log_call('开始下载第{}章'.format(i + 1))
+                process = multiprocessing.Process(target=down_img,
+                                                  args=(self.save_path, i + 1, self.book_id, print))
+                process.start()
+        else:
+            log_call('没找到{}相应漫画信息'.format(book_name))
 
     @staticmethod
     def get(url, char_set='utf-8'):
@@ -97,9 +115,8 @@ class SpiderComic(object):
         except Exception as e:
             print(e)
 
-    @staticmethod
-    def down_img(chapter_id, book_id):
-        global img_url
+
+def down_img(save_path, chapter_id, book_id, log):
         resp = SpiderComic.get(img_url.format(book_id, chapter_id))
         try:
             text = resp.text
@@ -110,34 +127,34 @@ class SpiderComic(object):
                 img_detail = json.loads(str_info)
                 book_title = img_detail['comic']['title']
                 c_title = img_detail['chapter']['cTitle']
-                print(book_title, c_title)
-                download_dir = '{}/../download/{}/{}/'.format(current_dir, book_title, c_title)
+                log(book_title)
+                log(c_title)
+                download_dir = '{}/{}/{}/'.format(save_path, book_title, c_title)
                 check_dir(download_dir)
                 for i, _v in enumerate(img_detail['picture']):
-                    img_url = _v['url']
+                    img_target = _v['url']
                     img_name = '{}{}.jpg'.format(download_dir, i)
-                    SpiderComic.down_file(img_url, img_name)
+                    down_file(img_target, img_name, log)
         except Exception as e:
-            print(e)
+                log('下载错误:'.format(e))
 
-    @staticmethod
-    def down_file(url, file):
+
+def down_file(url, target, log):
         resp = SpiderComic.get(url)
-        print(file)
-        print('开始下载...')
+        log('开始下载...{}'.format(target))
         try:
-            with open(file, 'wb') as f:
+            with open(target, 'wb') as f:
                 for chunk in resp.iter_content(chunk_size=1024):
                     if chunk:
                         f.write(chunk)
                         f.flush()
-            print('下载完成')
+            log('下载完成...{}'.format(target))
         except Exception as e:
-            print('下载出错:', e)
+            log('下载出错...{}'.format(e))
 
 
 def main():
-    SpiderComic().down_comic('一人之下')
+    SpiderComic().down_comic('同名')
 
 
 if __name__ == '__main__':

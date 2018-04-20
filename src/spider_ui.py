@@ -18,9 +18,14 @@ import time
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import pyqtSignal
+from get_comics import SpiderComic
 
 
 class SpiderUi(QWidget):
+
+    print_signal = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.layout_main = QGridLayout()
@@ -35,9 +40,13 @@ class SpiderUi(QWidget):
         self.start_btn = QPushButton('开始下载')
         self.info = ''
         self.init_ui()
+        self.print_signal.connect(self.next_detail)
+
+    def emit_log(self, message):
+        self.print_signal.emit(message)
 
     def init_ui(self):
-        self.setGeometry(400, 300, 800, 500)
+        self.setGeometry(400, 300, 500, 500)
         self.setWindowTitle('下载器')
         self.ui_layout()
         self.ui_url()
@@ -51,9 +60,9 @@ class SpiderUi(QWidget):
         self.setLayout(self.layout_main)
 
     def ui_url(self):
-        des = QLabel('url地址:')
-        self.url_line.setPlaceholderText('请输入 url地址')
-        self.url_line.setTextMargins(200, 40, 0, 40)
+        des = QLabel('漫画名称:')
+        self.url_line.setPlaceholderText('请输入 漫画名称')
+        # self.url_line.setTextMargins(100, 40, 0, 40)
         self.url_btn.clicked.connect(self.url_handler)
         self.layout_main.addWidget(des, 0, 0)
         self.layout_main.addWidget(self.url_line, 0, 1)
@@ -62,7 +71,7 @@ class SpiderUi(QWidget):
     def ui_down(self):
         des = QLabel('下载路径:')
         self.down_line.setPlaceholderText('请点击浏览按钮选择本地地址')
-        self.down_line.setTextMargins(200, 40, 0, 40)
+        # self.down_line.setTextMargins(100, 40, 0, 40)
         self.down_btn.clicked.connect(self.local_path)
         self.layout_main.addWidget(des, 1, 0)
         self.layout_main.addWidget(self.down_line, 1, 1)
@@ -87,7 +96,18 @@ class SpiderUi(QWidget):
 
     def url_handler(self):
         url = self.url_line.text()
-        print(url)
+        items = SpiderComic.get_list_by_book_name(url)
+        if 1 < len(items):
+            book_id = SpiderComic.get_list_by_book_name(url)[0][0]
+            info = SpiderComic.get_list_video(book_id)
+            book_name = info['title'].strip()
+            book_des = info['brief_intrd']
+            self.set_book_msg(book_name, book_des)
+        else:
+            if not url:
+                self.next_detail('请先输入漫画名称')
+            else:
+                self.next_detail('未找到相应漫画信息')
 
     def local_path(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -96,11 +116,20 @@ class SpiderUi(QWidget):
             self.down_line.setText(path)
 
     def on_start(self):
-        self.next_detail(self.now())
+        spider = SpiderComic()
+        path = self.down_line.text()
+        if os.path.isdir(path):
+            spider.set_save(path)
+        spider.ui_call(self.set_book_msg)
+        spider.down_comic(self.url_line.text(), self.emit_log)
+
+    def set_book_msg(self, name, des):
+        self.down_title.setText(name)
+        self.down_des.setText(des)
 
     def next_detail(self, msg):
         self.detail_list.moveCursor(QtGui.QTextCursor.End)
-        self.detail_list.append(msg)
+        self.detail_list.append('{}:{}'.format(self.now(), msg))
 
     def closeEvent(self, event):
         self.question_dialog('', '确定退出程序吗?', event.accept, event.ignore)
